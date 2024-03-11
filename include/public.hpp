@@ -9,7 +9,7 @@ enum EnMsgType
     LOGINOUT_MSG,      // 注销消息
     REGISTER_MSG,      // 注册消息
     REGISTER_MSG_ACK,  // 注册响应消息
-    ONE_CHAT_MSG,      // 聊天消息
+    ONE_CHAT_MSG,      // 聊天消息(一对一聊天的消息)
     ADD_FRIEND_MSG,    // 添加好友消息
 
     CREATE_GROUP_MSG,  // 创建群组

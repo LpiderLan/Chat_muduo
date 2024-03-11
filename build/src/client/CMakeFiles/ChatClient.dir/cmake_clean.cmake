@@ -1,7 +1,8 @@
 file(REMOVE_RECURSE
-  "CMakeFiles/ChatClient.dir/main.cpp.o"
-  "../../../bin/ChatClient.pdb"
   "../../../bin/ChatClient"
+  "../../../bin/ChatClient.pdb"
+  "CMakeFiles/ChatClient.dir/main.cpp.o"
+  "CMakeFiles/ChatClient.dir/main.cpp.o.d"
 )
 
 # Per-language clean rules from dependency scanning.

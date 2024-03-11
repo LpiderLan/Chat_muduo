@@ -6,6 +6,7 @@ bool GroupModel::createGroup(Group &group)
 {
     // insert into allgroup(groupname, groupdesc) values('chat-server', 'test for create group2');
     char sql[1024] = {0};
+    //id是AUTO_INCREMENT的，所以不需要自己插入
     snprintf(sql, sizeof(sql), "insert into allgroup(groupname, groupdesc) values('%s', '%s')",
         group.getName().c_str(), group.getDesc().c_str());
     
@@ -45,8 +46,9 @@ std::vector<Group> GroupModel::queryGroups(int userid)
      * 2. 再根据群组信息，查询属于该群组的所有用户的userid，并且和user表进行多表联合查询，查出用户的详细信息
     */
     char sql[1024] = {0};
-    snprintf(sql, sizeof(sql), "select a.id,a.groupname,a.groupdesc from allgroup a inner join \
-        groupuser b on a.id = b.groupid where b.userid=%d",
+    //尽量一句sql语句查完所有东西，别写好几条，这个涉及到查询效率
+    snprintf(sql, sizeof(sql), "select a.id,a.groupname,a.groupdesc from AllGroup a inner join \
+        GroupUser b on a.id = b.groupid where b.userid=%d",
         userid);
     
     std::vector<Group> groupVec;

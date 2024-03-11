@@ -80,7 +80,7 @@ void ChatService::clientCloseExceptionHandler(const TcpConnectionPtr &conn)
             if (it->second == conn)
             {
                 // 从map表删除用户的链接信息
-                user.setId(it->first);
+                user.setId(it->first);  //只需标识出要删除的用户即可，因此只设置了ID属性。
                 _userConnMap.erase(it);
                 break;
             }
@@ -93,7 +93,7 @@ void ChatService::clientCloseExceptionHandler(const TcpConnectionPtr &conn)
     // 更新用户的状态信息
     if (user.getId() != -1)
     {
-        user.setState("offline");
+        user.setState("offline");  //将用户的状态设置成offline
         _userModel.updateState(user);
     }
 }
@@ -105,6 +105,7 @@ void ChatService::oneChatHandler(const TcpConnectionPtr &conn, json &js, Timesta
     int toId = js["toid"].get<int>();
     
     {
+        //要访问连接信息表，所以要锁住
         lock_guard<mutex> lock(_connMutex);
         auto it = _userConnMap.find(toId);
         // 确认是在线状态

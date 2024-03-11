@@ -57,10 +57,11 @@ int main(int argc, char **argv)
     }
 
     // 解析通过命令行参数传递的ip和port
-    char *ip = argv[1];
+    char *ip = argv[1];   //直接让 ip 指向 argv[1] 所指向的内存位置。
     uint16_t port = atoi(argv[2]);
 
     // 创建client端的socket
+    // 创建了一个套接字，并将其文件描述符存储在 clientfd 变量中
     int clientfd = socket(AF_INET, SOCK_STREAM, 0);
     if (-1 == clientfd)
     {
@@ -69,12 +70,12 @@ int main(int argc, char **argv)
     }
 
     // 填写client需要连接的server信息ip+port
-    sockaddr_in server;
-    memset(&server, 0, sizeof(sockaddr_in));
+    sockaddr_in server; //用于存储服务器地址信息的结构体变量，sockaddr_in 结构体用于存储 IPv4 地址和端口号信息。
+    memset(&server, 0, sizeof(sockaddr_in));  //将 server 结构体变量的内存空间清零，以确保其中的所有字段都被初始化为0。
 
-    server.sin_family = AF_INET;
-    server.sin_port = htons(port);
-    server.sin_addr.s_addr = inet_addr(ip);
+    server.sin_family = AF_INET; //设置服务器地址结构体中的地址族（Address Family）为 AF_INET，表示使用 IPv4 地址。
+    server.sin_port = htons(port); //htons 函数，将主机字节序（Host Byte Order）转换为网络字节序（Network Byte Order）
+    server.sin_addr.s_addr = inet_addr(ip); //设置服务器地址结构体中的 IP 地址。inet_addr 函数将点分十进制形式的 IP 地址转换为网络字节序的二进制形式，并赋值给 sin_addr.s_addr 字段。
 
     // client和server进行连接
     if (-1 == connect(clientfd, (sockaddr *)&server, sizeof(sockaddr_in)))
@@ -85,11 +86,11 @@ int main(int argc, char **argv)
     }
 
     // 初始化读写线程通信用的信号量
-    sem_init(&rwsem, 0, 0);
-
+    sem_init(&rwsem, 0, 0);  //第一个0表示此信号量是线程共享的，第二个表示信号量的初始值
+ 
     // 连接服务器成功，启动接收子线程
-    std::thread readTask(readTaskHandler, clientfd); // pthread_create
-    readTask.detach();                               // pthread_detach
+    std::thread readTask(readTaskHandler, clientfd); // pthread_create  clientfd作为readTaskHandler的参数
+    readTask.detach();                               // pthread_detach  主线程不再关心这个线程的状态
 
     // main线程用于接收用户输入，负责发送数据
     for (;;)
@@ -123,7 +124,7 @@ int main(int argc, char **argv)
             js["password"] = pwd;
             string request = js.dump();
 
-            g_isLoginSuccess = false;
+            g_isLoginSuccess = false; 
 
             int len = send(clientfd, request.c_str(), strlen(request.c_str()) + 1, 0);
             if (len == -1)
@@ -289,7 +290,7 @@ void readTaskHandler(int clientfd)
     for (;;)
     {
         char buffer[1024] = {0};
-        int len = recv(clientfd, buffer, 1024, 0);  // 阻塞了
+        int len = recv(clientfd, buffer, 1024, 0);  // 阻塞了,从已连接的套接字中将接收到的数据存储在 buffer 中，并将接收到的字节数保存在 len 变量
         if (-1 == len || 0 == len)
         {
             close(clientfd);
@@ -373,7 +374,7 @@ void groupchat(int, string);
 // "loginout" command handler
 void loginout(int, string);
 
-// 系统支持的客户端命令列表
+// 用unordered_map存放系统支持的客户端命令列表
 unordered_map<string, string> commandMap = {
     {"help", "显示所有支持的命令，格式help"},
     {"chat", "一对一聊天，格式chat:friendid:message"},
@@ -384,6 +385,7 @@ unordered_map<string, string> commandMap = {
     {"loginout", "注销，格式loginout"}};
 
 // 注册系统支持的客户端命令处理
+//这些函数接受两个参数（一个整数和一个字符串），并且没有返回值。
 unordered_map<string, function<void(int, string)>> commandHandlerMap = {
     {"help", help},
     {"chat", chat},
@@ -396,13 +398,13 @@ unordered_map<string, function<void(int, string)>> commandHandlerMap = {
 // 主聊天页面程序
 void mainMenu(int clientfd)
 {
-    help();
+    help();  //不带参数是因为help()有默认值
 
     char buffer[1024] = {0};
     while (isMainMenuRunning)
     {
         cin.getline(buffer, 1024);
-        string commandbuf(buffer);
+        string commandbuf(buffer);  //用户输入的命令转换为 string 类型：
         string command; // 存储命令
         int idx = commandbuf.find(":");
         if (-1 == idx)

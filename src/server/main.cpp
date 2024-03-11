@@ -6,6 +6,7 @@
 using namespace std;
 
 // 捕获SIGINT的处理函数
+//服务器ctrl+c结束后，重置user的状态信息
 void resetHandler(int)
 {
     LOG_INFO << "capture the SIGINT, will reset state\n";

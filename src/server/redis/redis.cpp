@@ -63,6 +63,7 @@ bool Redis::publish(int channel, string message)
 }
 
 // 向Redis指定的通道subscribe订阅消息
+// 实现的是非阻塞式的订阅操作
 bool Redis::subscribe(int channel)
 {
     // redisCommand 会先把命令缓存到context中，然后调用RedisAppendCommand发送给redis
@@ -77,6 +78,7 @@ bool Redis::subscribe(int channel)
     int done = 0;
     while (!done)
     {
+        //redisAppendCommand 和 redisBufferWrite 可以实现非阻塞式的订阅操作
         if (REDIS_ERR == redisBufferWrite(subcribe_context_, &done))
         {
             cerr << "subscribe command failed" << endl;

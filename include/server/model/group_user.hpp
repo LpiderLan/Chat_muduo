@@ -5,6 +5,7 @@
 #include <string>
 
 // TODO:别继承了，分开比较好
+//只比user多了个role属性，直接从User类继承
 class GroupUser : public User
 {
 public:
@@ -13,7 +14,7 @@ public:
     std::string getRole() { return _role; }
 
 private:
-    std::string _role;
+    std::string _role;  
 };
 
 
