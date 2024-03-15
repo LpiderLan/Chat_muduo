@@ -27,7 +27,7 @@ private:
                    Buffer *,
                    Timestamp);
 
-	TcpServer _server;  
+	TcpServer _server;  //实现服务器功能的类对象
 	EventLoop *_loop;
 };
 

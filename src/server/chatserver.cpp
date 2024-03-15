@@ -16,7 +16,7 @@ ChatServer::ChatServer(EventLoop *loop,
     : _server(loop, listenAddr, nameArg), _loop(loop)
 {
     // 注册连接事件的回调函数
-    _server.setConnectionCallback(std::bind(&ChatServer::onConnection, this, _1));
+    _server.setConnectionCallback(std::bind(&ChatServer::onConnection, this, _1));  //该函数将在有新连接到达服务器时被调用。
 
     // 注册消息事件的回调函数
     _server.setMessageCallback(std::bind(&ChatServer::onMessage, this, _1, _2, _3));
@@ -34,7 +34,7 @@ void ChatServer::start()
 // 连接事件相关信息的回调函数
 void ChatServer::onConnection(const TcpConnectionPtr &conn)
 {
-    // 客户端断开连接
+    // 客户端断开连接或者连接失败
     if (!conn->connected())
     {
         // 处理客户端异常退出事件
@@ -54,7 +54,7 @@ void ChatServer::onMessage(const TcpConnectionPtr &conn,
     // 数据的反序列化
     json js = json::parse(buf);
     
-    // 完全解耦网络模块和业务模块，不要在网络模块中调用业务模块的方法
+    // 完全解耦网络模块和业务模块，不要在网络模块中调用业务模块的方法（没有出现任何的login，register字眼）
     // 通过 js["msg_id"] 来获取不同的业务处理器（事先绑定的回调方法）
     // js["msgid"].get<int>() 将js["msgid"]对应的值强制转换成int
     auto msgHandler = ChatService::instance()->getHandler(js["msgid"].get<int>());

@@ -26,7 +26,7 @@ public:
     // ChatService 单例模式
     // thread safe
     static ChatService* instance() {
-        static ChatService service;
+        static ChatService service;  //在这里实例化了，并且全局只有这一个实例化对象
         return &service;
     }
 
@@ -54,7 +54,7 @@ public:
     void redis_subscribe_message_handler(int channel, string message);
 
 private:
-    ChatService();
+    ChatService(); //单例模式，将构造写到private
     ChatService(const ChatService&) = delete;
     ChatService& operator=(const ChatService&) = delete;
 
