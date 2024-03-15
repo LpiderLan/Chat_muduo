@@ -3,8 +3,8 @@
 
 // 数据库配置信息
 static const string server = "127.0.0.1";
-static const string user = "root";
-static const string password = "200166_Shangjkld";
+static const string user = "ll";
+static const string password = "123456";
 static const string dbname = "chat";
 
 // 初始化数据库连接

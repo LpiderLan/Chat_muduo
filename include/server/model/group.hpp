@@ -5,6 +5,7 @@
 #include <vector>
 #include "group_user.hpp"
 
+//Group对象包含了两张表的信息_id，_name,_desc来自AllGroup表，_users来自groupuser表
 class Group
 {
 public:
@@ -21,7 +22,7 @@ public:
     int getId() { return _id; }
     std::string getName() { return _name; }
     std::string getDesc() { return _desc; }
-    std::vector<GroupUser> &getUsers() { return _users; }
+    std::vector<GroupUser> &getUsers() { return _users; } //返回一个指向 _users 向量的引用，允许外部代码直接访问和修改 _users 向量中的元素
 
 private:
     int _id;

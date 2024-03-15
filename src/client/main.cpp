@@ -1,4 +1,4 @@
-#include "json.hpp"
+#include "json.hpp"  //客户端和服务器通讯的数据要用json解析
 #include <iostream>
 #include <thread>
 #include <string>
@@ -21,7 +21,9 @@ using json = nlohmann::json;
 #include "group.hpp"
 #include "user.hpp"
 #include "public.hpp"
-
+// 聊天界面是一个网络程序，但是不需要高并发（因为没有什么去连接它）
+// 用的方法主要还是chatserver和chatservice，界面只是把得到的消息进行打印展示而已
+// 比如在chatservice中我们注册了用户和密码，返回了一个userid，在界面中答应出来提醒用户记住，而不是写在chatservice中
 // 记录当前系统登录的用户信息
 User g_currentUser;
 // 记录当前登录用户的好友列表信息
@@ -38,7 +40,7 @@ sem_t rwsem;
 atomic_bool g_isLoginSuccess{false};
 
 
-// 接收线程
+// 接收线程，接收用户的主动输入，如果是单线程，那么我要是不发送消息，那么就会一直阻塞，让收消息也收不了
 void readTaskHandler(int clientfd);
 // 获取系统时间（聊天信息需要添加时间信息）
 string getCurrentTime();
@@ -88,7 +90,7 @@ int main(int argc, char **argv)
     // 初始化读写线程通信用的信号量
     sem_init(&rwsem, 0, 0);  //第一个0表示此信号量是线程共享的，第二个表示信号量的初始值
  
-    // 连接服务器成功，启动接收子线程
+    // 连接服务器成功，启动接收来自Chatserver服务器的子线程
     std::thread readTask(readTaskHandler, clientfd); // pthread_create  clientfd作为readTaskHandler的参数
     readTask.detach();                               // pthread_detach  主线程不再关心这个线程的状态
 
@@ -104,7 +106,7 @@ int main(int argc, char **argv)
         cout << "choice:";
         int choice = 0;
         cin >> choice;
-        cin.get(); // 读掉缓冲区残留的回车
+        cin.get(); // 读掉缓冲区残留的回车(养成好习惯)
 
         switch (choice)
         {
@@ -116,8 +118,9 @@ int main(int argc, char **argv)
             cin >> id;
             cin.get(); // 读掉缓冲区残留的回车
             cout << "userpassword:";
-            cin.getline(pwd, 50);
+            cin.getline(pwd, 50);  //直接读取一行，不用读掉回车
 
+            //生成登陆的js
             json js;
             js["msgid"] = LOGIN_MSG;
             js["id"] = id;
@@ -180,6 +183,8 @@ int main(int argc, char **argv)
 }
 
 // 处理注册的响应逻辑
+// 服务器发送回的responsejs，如果没有如果没有特别的解析逻辑，那么它会收到客户端发送的完整消息内容，包括消息类型、用户信息、命令等等
+// 这里就是对responsejs进行解析，让它输出一些可以让用户明白的内容
 void doRegResponse(json &responsejs)
 {
     if (0 != responsejs["errno"].get<int>()) // 注册失败
@@ -188,6 +193,8 @@ void doRegResponse(json &responsejs)
     }
     else // 注册成功
     {
+        //在chatservice中我们注册了用户和密码，返回了一个userid，
+        //在界面中答应出来提醒用户记住，而不是写在chatservice中，体现了分层的思想
         cout << "name register success, userid is " << responsejs["id"]
                 << ", do not forget it!" << endl;
     }
@@ -210,7 +217,7 @@ void doLoginResponse(json &responsejs)
         // 记录当前用户的好友列表信息
         if (responsejs.contains("friends"))
         {
-            // 初始化
+            // 初始化，重新装填当前好友列表，可以用于更新好友上下线信息
             g_currentUserFriendList.clear();
 
             vector<string> vec = responsejs["friends"];
@@ -309,6 +316,7 @@ void readTaskHandler(int clientfd)
 
         if (GROUP_CHAT_MSG == msgtype)
         {
+            //将服务器返回的js消息转成客户端的输出格式
             cout << "群消息[" << js["groupid"] << "]:" << js["time"].get<string>() << " [" << js["id"] << "]" << js["name"].get<string>()
                  << " said: " << js["msg"].get<string>() << endl;
             continue;
@@ -338,7 +346,7 @@ void showCurrentUserData()
     cout << "----------------------friend list---------------------" << endl;
     if (!g_currentUserFriendList.empty())
     {
-        for (User &user : g_currentUserFriendList)
+        for (User &user : g_currentUserFriendList)  //读取的是全局变量
         {
             cout << user.getId() << " " << user.getName() << " " << user.getState() << endl;
         }
@@ -385,7 +393,7 @@ unordered_map<string, string> commandMap = {
     {"loginout", "注销，格式loginout"}};
 
 // 注册系统支持的客户端命令处理
-//这些函数接受两个参数（一个整数和一个字符串），并且没有返回值。
+//这些函数接受两个参数（一个整数（为了传递clientdf）和一个字符串（实际传入函数的参数）），并且没有返回值。
 unordered_map<string, function<void(int, string)>> commandHandlerMap = {
     {"help", help},
     {"chat", chat},
@@ -401,21 +409,21 @@ void mainMenu(int clientfd)
     help();  //不带参数是因为help()有默认值
 
     char buffer[1024] = {0};
-    while (isMainMenuRunning)
+    while (isMainMenuRunning)  //不用for(;;)写死循环，用while进行登录状态判断
     {
         cin.getline(buffer, 1024);
-        string commandbuf(buffer);  //用户输入的命令转换为 string 类型：
+        string commandbuf(buffer);  //用户输入的命令转换为 string 类型，是chat:friendid:message
         string command; // 存储命令
-        int idx = commandbuf.find(":");
+        int idx = commandbuf.find(":"); 
         if (-1 == idx)
         {
-            command = commandbuf;
+            command = commandbuf;  //chat:friendid:message
         }
         else
         {
-            command = commandbuf.substr(0, idx);
+            command = commandbuf.substr(0, idx); //chat
         }
-        auto it = commandHandlerMap.find(command);
+        auto it = commandHandlerMap.find(command); //通过chat在commandHandlerMap找到对应的实际函数
         if (it == commandHandlerMap.end())
         {
             cerr << "invalid input command!" << endl;
@@ -423,11 +431,12 @@ void mainMenu(int clientfd)
         }
 
         // 调用相应命令的事件处理回调，mainMenu对修改封闭，添加新功能不需要修改该函数
-        it->second(clientfd, commandbuf.substr(idx + 1, commandbuf.size() - idx)); // 调用命令处理方法
+        it->second(clientfd, commandbuf.substr(idx + 1, commandbuf.size() - idx)); // 调用命令处理方法，传入的参数是friendid:message
     }
 }
 
 // "help" command handler
+// 提示用户有哪些命令，在这里新建了commandMap
 void help(int, string)
 {
     cout << "show command list >>> " << endl;
@@ -454,6 +463,7 @@ void addfriend(int clientfd, string str)
     }
 }
 // "chat" command handler
+// 传入的str是friendid:message，要根据：分开
 void chat(int clientfd, string str)
 {
     int idx = str.find(":"); // friendid:message
@@ -475,6 +485,7 @@ void chat(int clientfd, string str)
     js["time"] = getCurrentTime();
     string buffer = js.dump();
 
+    //这里有一点没写好的是把js发送回服务器的时候，服务器那边的方法还是用的最原始的找到toid用户1，然后原封不动地把js发送给朋友
     int len = send(clientfd, buffer.c_str(), strlen(buffer.c_str()) + 1, 0);
     if (-1 == len)
     {
@@ -508,6 +519,7 @@ void creategroup(int clientfd, string str)
     }
 }
 // "addgroup" command handler
+// 把数据传给业务层
 void addgroup(int clientfd, string str)
 {
     int groupid = atoi(str.c_str());

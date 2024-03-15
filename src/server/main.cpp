@@ -6,7 +6,7 @@
 using namespace std;
 
 // 捕获SIGINT的处理函数
-//服务器ctrl+c结束后，重置user的状态信息
+// 服务器ctrl+c结束后，重置user的状态信息
 void resetHandler(int)
 {
     LOG_INFO << "capture the SIGINT, will reset state\n";
@@ -26,7 +26,7 @@ int main(int argc, char **argv)
     // char *ip = argv[1];
     // uint16_t port = atoi(argv[2]);
 
-    signal(SIGINT, resetHandler);
+    signal(SIGINT, resetHandler);  //SIGINT 信号是由用户在终端按下 Ctrl+C 键触发的
 
     EventLoop loop;
     InetAddress addr("127.0.0.1", atoi(argv[1]));

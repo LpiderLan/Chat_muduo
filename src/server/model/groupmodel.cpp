@@ -1,7 +1,7 @@
 #include "group_model.hpp"
 #include "db.h"
 
-// 创建群组（设置群组名字和描述）
+// 创建群组（设置群组名字和描述），插入的是Allgroup表
 bool GroupModel::createGroup(Group &group)
 {
     // insert into allgroup(groupname, groupdesc) values('chat-server', 'test for create group2');
@@ -23,7 +23,7 @@ bool GroupModel::createGroup(Group &group)
     return false;
 }
 
-// 加入群组（用户ID 加入群组ID 在群组角色）
+// 加入群组（用户ID 加入群组ID 在群组角色），插入的是groupuser表
 void GroupModel::addGroup(int userid, int groupid, std::string role)
 {
     char sql[1024] = {0};
@@ -37,13 +37,13 @@ void GroupModel::addGroup(int userid, int groupid, std::string role)
     }
 }
 
-// 查询用户所在群组信息
+// 查询用户所有所在群组信息，返回的是vector<Group>，每个group都是从allgroup和groupuser两张表中拼成的数据
 std::vector<Group> GroupModel::queryGroups(int userid)
 {
     /**
      * // TODO:MySQL联表查询
-     * 1. 先根据userid在groupuser表中查询出该用户所属的群组信息
-     * 2. 再根据群组信息，查询属于该群组的所有用户的userid，并且和user表进行多表联合查询，查出用户的详细信息
+     * 1. 先根据userid在groupuser表中查询出该用户所属的groupid
+     * 2. 再根据groupid，在AllGroup查询a.id,a.groupname,a.groupdesc
     */
     char sql[1024] = {0};
     //尽量一句sql语句查完所有东西，别写好几条，这个涉及到查询效率
@@ -52,7 +52,7 @@ std::vector<Group> GroupModel::queryGroups(int userid)
         userid);
     
     std::vector<Group> groupVec;
-
+    
     MySQL mysql;
     if (mysql.connect())
     {
@@ -64,6 +64,7 @@ std::vector<Group> GroupModel::queryGroups(int userid)
             while ((row = mysql_fetch_row(res)) != nullptr)
             {
                 Group group;
+                //先只放如id，name，desc，后面再放一堆用户
                 group.setId(atoi(row[0]));
                 group.setName(row[1]);
                 group.setDesc(row[2]);
@@ -73,9 +74,10 @@ std::vector<Group> GroupModel::queryGroups(int userid)
         }
     }
 
-    // 查询群组的用户信息
+    // 查询群组的用户信息，包含userid，username，userstate
     for (Group &group : groupVec)
     {
+        //使用group.getId()方法得到groupID，然后在GroupUser表中得到userId，b.grouprole，然后再在User表得到a.id,a.name,a.state
         snprintf(sql, sizeof(sql), "select a.id,a.name,a.state,b.grouprole from user a \
             inner join groupuser b on b.userid = a.id where b.groupid=%d",
                 group.getId());

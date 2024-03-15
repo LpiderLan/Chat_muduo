@@ -33,10 +33,10 @@ public:
     void init_notify_handler(redis_handler handler);
 
 private:
-    //hiredis同步上下文对象，负责publish消息
+    //hiredis同步上下文对象，负责publish消息，相当于client
     redisContext *publish_context_;
 
-    //负责subscribe消息
+    //负责subscribe消息，相当于client
     redisContext *subcribe_context_;
 
     //回调操作，收到消息给service上报

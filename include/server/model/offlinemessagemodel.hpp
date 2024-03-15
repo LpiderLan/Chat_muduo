@@ -16,7 +16,7 @@ public:
     void remove(int userId);
 
     // 查询用户的离线消息
-    std::vector<std::string> query(int userId);
+    vector<string> query(int userId);
 };
 
 #endif // OFFLINE_MESSAGE_MODEL_H

@@ -23,6 +23,7 @@ ChatService::ChatService()
 
     if (_redis.connect())
     {
+        //保证收到来自redis的消息的时候（publish）的函数调用
         _redis.init_notify_handler(std::bind(&ChatService::redis_subscribe_message_handler, this, _1, _2));
     }
 }
@@ -32,7 +33,7 @@ void ChatService::redis_subscribe_message_handler(int channel, string message)
 {
     //用户在线
     lock_guard<mutex> lock(_connMutex);
-    auto it = _userConnMap.find(channel);
+    auto it = _userConnMap.find(channel); //这里刚好是channel和用户id相等所以可以在_userConnMap中找channel
     if (it != _userConnMap.end())
     {
         it->second->send(message);
@@ -77,10 +78,10 @@ void ChatService::clientCloseExceptionHandler(const TcpConnectionPtr &conn)
         lock_guard<mutex> lock(_connMutex);
         for (auto it = _userConnMap.begin(); it != _userConnMap.end(); ++it)
         {
-            if (it->second == conn)
+            if (it->second == conn) //所有已经连接的客户端中和自己客户端相等的时候
             {
                 // 从map表删除用户的链接信息
-                user.setId(it->first);  //只需标识出要删除的用户即可，因此只设置了ID属性。
+                user.setId(it->first);  //根据_userConnMap的定义，it->first是当前客户端的连接id也是用户id，所以可以用来设置userid
                 _userConnMap.erase(it);
                 break;
             }
@@ -94,7 +95,7 @@ void ChatService::clientCloseExceptionHandler(const TcpConnectionPtr &conn)
     if (user.getId() != -1)
     {
         user.setState("offline");  //将用户的状态设置成offline
-        _userModel.updateState(user);
+        _userModel.updateState(user); //依旧是业务层和数据操作层分离
     }
 }
 
@@ -105,19 +106,20 @@ void ChatService::oneChatHandler(const TcpConnectionPtr &conn, json &js, Timesta
     int toId = js["toid"].get<int>();
     
     {
-        //要访问连接信息表，所以要锁住
+        //要访问连接信息表_userConnMap，所以要锁住
         lock_guard<mutex> lock(_connMutex);
         auto it = _userConnMap.find(toId);
         // 确认是在线状态
         if (it != _userConnMap.end())
         {
             // TcpConnection::send() 直接发送消息
-            it->second->send(js.dump());
+            it->second->send(js.dump());  //A->B中A在js说了什么，B就接收什么，没有改变
+            
             return;
         }
     }
     
-    // 用户在其他主机的情况，publish消息到redis
+    // 在数据库找用户是不是在线，如果在线，说明是用户在其他服务器上在线的情况，publish消息到redis
     User user = _userModel.query(toId);
     if (user.getState() == "online")
     {
@@ -125,7 +127,7 @@ void ChatService::oneChatHandler(const TcpConnectionPtr &conn, json &js, Timesta
         return;
     }
 
-    // toId 不在线则存储离线消息
+    // toId 不在线则存储离线消息，也是同样的A在js说了什么，B就接收什么，没有改变
     _offlineMsgModel.insert(toId, js.dump());
 }
 
@@ -136,10 +138,10 @@ void ChatService::addFriendHandler(const TcpConnectionPtr &conn, json &js, Times
     int friendId = js["friendid"].get<int>();
 
     // 存储好友信息
-    _friendModel.insert(userId, friendId);
+    _friendModel.insert(userId, friendId);  //_friendModel是朋友相关数据库操作的对象
 }
 
-// 创建群组业务
+// 创建群组业务，包含id，groupname，groupdesc插入到AllGroup表，除此之外，我们还要生成创建者到GroupUser表
 void ChatService::createGroup(const TcpConnectionPtr &conn, json &js, Timestamp time)
 {
     int userId = js["id"].get<int>();
@@ -151,11 +153,11 @@ void ChatService::createGroup(const TcpConnectionPtr &conn, json &js, Timestamp 
     if (_groupModel.createGroup(group))
     {
         // 存储群组创建人信息
-        _groupModel.addGroup(userId, group.getId(), "creator");
+        _groupModel.addGroup(userId, group.getId(), "creator"); 
     }
 }
 
-// 加入群组业务
+// 加入群组业务，插入数据（id，groupid，role）到GroupUser表
 void ChatService::addGroup(const TcpConnectionPtr &conn, json &js, Timestamp time)
 {
     int userId = js["id"].get<int>();
@@ -168,7 +170,7 @@ void ChatService::groupChat(const TcpConnectionPtr &conn, json &js, Timestamp ti
 {
     int userId = js["id"].get<int>();
     int groupId = js["groupid"].get<int>();
-    std::vector<int> userIdVec = _groupModel.queryGroupUsers(userId, groupId);
+    std::vector<int> userIdVec = _groupModel.queryGroupUsers(userId, groupId);  //用户所在群组的所有用户id
 
     lock_guard<mutex> lock(_connMutex);
     for (int id : userIdVec)
@@ -230,7 +232,7 @@ void ChatService::loginHandler(const TcpConnectionPtr &conn, json &js, Timestamp
             // 需要考虑线程安全问题 onMessage会在不同线程中被调用
             {
                 lock_guard<mutex> lock(_connMutex);
-                _userConnMap.insert({id, conn});
+                _userConnMap.insert({id, conn});      // _userConnMap只在这里insert了，表示已经登陆上的用户对应的连接
             }
 
             // id用户登录成功后，向redis订阅channel(id)
@@ -238,7 +240,7 @@ void ChatService::loginHandler(const TcpConnectionPtr &conn, json &js, Timestamp
 
             // 登录成功，更新用户状态信息 state offline => online
             user.setState("online");
-            _userModel.updateState(user);
+            _userModel.updateState(user);   //这句话就将数据更新反映到数据库中了，体现了业务模块和数据模块分开的思想
 
             json response;
             response["msgid"] = LOGIN_MSG_ACK;
@@ -247,7 +249,7 @@ void ChatService::loginHandler(const TcpConnectionPtr &conn, json &js, Timestamp
             response["name"] = user.getName();
 
             // 查询该用户是否有离线消息
-            std::vector<std::string> vec = _offlineMsgModel.query(id);
+            std::vector<std::string> vec = _offlineMsgModel.query(id);  //_offlineMsgModel是对离线消息数据库操作的模型
             if (!vec.empty())
             {
                 response["offlinemsg"] = vec;
@@ -259,21 +261,22 @@ void ChatService::loginHandler(const TcpConnectionPtr &conn, json &js, Timestamp
                 LOG_INFO << "无离线消息";
             }
 
-            std::vector<User> userVec = _friendModel.query(id);
+            // 展示好友信息和状态
+            vector<User> userVec = _friendModel.query(id);
             if (!userVec.empty())
             {
-                std::vector<std::string> vec;
+                vector<string> vec;   //存储要发送的好友信息
                 for (auto& user : userVec)
                 {
                     json js;
                     js["id"] = user.getId();
                     js["name"] = user.getName();
                     js["state"] = user.getState();
-                    vec.push_back(js.dump());
+                    vec.push_back(js.dump()); //js.dump()转成json字符串
                 }
                 response["friends"] = vec;
             }
-
+            //response包含：用户的id，name 离线消息，朋友
             conn->send(response.dump());
         }
     }
@@ -281,23 +284,24 @@ void ChatService::loginHandler(const TcpConnectionPtr &conn, json &js, Timestamp
 }
 
 // 注册业务
+// 注册的用户名和id是否和数据库数据重复判断是写在usermodel.cpp中了：id INT: 这是用户的唯一标识符，是主键（PRIMARY KEY）因此 id 字段不允许重复。name VARCHAR(50): 用户名要求为UNIQUE。这意味着每个用户名必须是唯一的，不允许重复。
 void ChatService::registerHandler(const TcpConnectionPtr &conn, json &js, Timestamp time)
 {
     LOG_DEBUG << "do regidster service!";
-
+    //只用设置name和password，其他的参数User的默认构造已经写好了
     std::string name = js["name"];
     std::string password = js["password"];
 
     User user;
     user.setName(name);
     user.setPassword(password);
-    bool state = _userModel.insert(user);
+    bool state = _userModel.insert(user);  //这句话就将数据生成并插入到数据库中了，体现了业务模块和数据模块分开的思想
     if (state)
     {
-        // 注册成功
+        // 注册成功，生成打印的消息并发送回了客户端
         json response;
         response["msgid"] = REGISTER_MSG_ACK;
-        response["errno"] = 0;
+        response["errno"] = 0;  //表示注册成功了
         response["id"] = user.getId();
         // json::dump() 将序列化信息转换为std::string
         conn->send(response.dump());

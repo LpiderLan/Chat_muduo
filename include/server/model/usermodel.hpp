@@ -3,13 +3,14 @@
 
 #include "user.hpp"
 
+//专门操作User表的数据库操作类
 class UserModel
 {
 public:
-    // User表的插入方法
+    // User表的插入方法（注册用到）
     bool insert(User &user);
 
-    // 根据用户号码查询用户信息
+    // 根据用户号码查询用户信息（登录用到）
     User query(int id);
 
     // 更新用户的状态信息

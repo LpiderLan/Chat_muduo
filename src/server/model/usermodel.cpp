@@ -6,15 +6,16 @@ bool UserModel::insert(User& user)
 {
     // 组装sql语句
     char sql[1024] = {0};
-    snprintf(sql, sizeof(sql), "insert into user(name, password, state) values('%s', '%s', '%s')",
+    snprintf(sql, sizeof(sql), "insert into user(name, password, state) values('%s', '%s', '%s')",  //先插入三个值
         user.getName().c_str(), user.getPassword().c_str(), user.getState().c_str());
 
+    //连接Mysql数据库
     MySQL mysql;
     if (mysql.connect())
     {
         if (mysql.update(sql))
         {
-            user.setId(mysql_insert_id(mysql.getConnection()));
+            user.setId(mysql_insert_id(mysql.getConnection()));  //这个时候才插入id
             return true;
         }
     }
@@ -34,7 +35,7 @@ User UserModel::query(int id)
         MYSQL_RES *res = mysql.query(sql);
         if (res != nullptr)
         {
-            MYSQL_ROW row = mysql_fetch_row(res);
+            MYSQL_ROW row = mysql_fetch_row(res);//fetch根据主键查的，最终只会查到一行
             if (row != nullptr)
             {
                 // 生成一个User对象，填入信息
@@ -47,9 +48,7 @@ User UserModel::query(int id)
                 return user;
             }
         }
-
     }
-
     // 返回空User
     return User();
 }

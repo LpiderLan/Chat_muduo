@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Cluster-Chat-Server
 
 在 Linux 环境下基于 muduo 开发的集群聊天服务器。实现新用户注册、用户登录、添加好友、添加群组、好友通信、群组聊天、保持离线消息等功能。
@@ -202,3 +203,6 @@ void ChatServer::onMessage(const TcpConnectionPtr &conn,
 
 # 详细记录
 
+=======
+# Chat_muduo
+>>>>>>> 5f09d81629e6a8e69a42cd54902721f3e3015f7a

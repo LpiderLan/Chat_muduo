@@ -1,7 +1,8 @@
 #include "offlinemessagemodel.hpp"
 #include "db.h"
-
+using namespace std;
 // 存储用户的离线消息
+// 虽然insert传入的参数只有两个，但是msg相当于是js，包含了很多信息
 void OfflineMsgModel::insert(int userId, std::string msg)
 {
     // 组织sql语句
@@ -30,7 +31,7 @@ void OfflineMsgModel::remove(int userId)
 }
 
 // 查询用户的离线消息
-std::vector<std::string> OfflineMsgModel::query(int userId)
+vector<string> OfflineMsgModel::query(int userId)
 {
     // 组织sql语句
     char sql[1024] = {0};
@@ -47,7 +48,7 @@ std::vector<std::string> OfflineMsgModel::query(int userId)
             MYSQL_ROW row;
             while ((row = mysql_fetch_row(res)) != nullptr)  //一行一行遍历得到每行的数据
             {
-                vec.push_back(row[0]);  //只select了message，所以是row[0]
+                vec.push_back(row[0]);  //SQL 查询语句中只select了message，所以是row[0]
             }
             mysql_free_result(res);
             return vec;

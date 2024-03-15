@@ -1,12 +1,12 @@
 #include "friendmodel.hpp"
 #include "db.h"
-
-// 添加好友关系
+using namespace std;
+// 添加好友关系，和离线消息的insert几乎一样
 void FriendModel::insert(int userId, int friendId)
 {
     // 组织sql语句
     char sql[1024] = {0};
-    snprintf(sql, sizeof(sql), "insert into friend values(%d, %d)", userId, friendId);
+    snprintf(sql, sizeof(sql), "insert into friend values(%d, %d)", userId, friendId);  //userId和friendId是联合主键
 
     MySQL mysql;
     if (mysql.connect())
@@ -16,15 +16,16 @@ void FriendModel::insert(int userId, int friendId)
 }
 
 // 返回用户好友列表
-std::vector<User> FriendModel::query(int userId)
+vector<User> FriendModel::query(int userId)
 {
     // 1.组装sql语句
     char sql[1024] = {0};
 
     // 联合查询
+    //friend表里只保存了好友的id，需要用这个id在User表找到好友的id，name，state
     sprintf(sql, "select a.id, a.name, a.state from user a inner join friend b on b.friendid = a.id where b.userid=%d", userId);
 
-    std::vector<User> vec;
+    vector<User> vec;
     MySQL mysql;
     if (mysql.connect())
     {

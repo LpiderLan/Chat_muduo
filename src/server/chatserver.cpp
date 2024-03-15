@@ -37,14 +37,14 @@ void ChatServer::onConnection(const TcpConnectionPtr &conn)
     // 客户端断开连接或者连接失败
     if (!conn->connected())
     {
-        // 处理客户端异常退出事件
+        // 处理客户端异常退出事件,这种事件虽然涉及到网络，但是如何处理主要还是业务模块的
         ChatService::instance()->clientCloseExceptionHandler(conn);
         // 半关闭
         conn->shutdown();
     }
 }
 
-// 上报读写事件相关信息的回调函数
+// 上报读写事件相关信息的回调函数，这个方法会被多个用户调用，也就是说同时有多个连接，每个连接都可能调用不用的业务方法
 void ChatServer::onMessage(const TcpConnectionPtr &conn,
                            Buffer *buffer,
                            Timestamp time)
